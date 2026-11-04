@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+.ipynb_checkpoints/
+.pytest_cache/
+# NEVER commit real Ministry data
+data/real/
+data/raw/
