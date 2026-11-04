@@ -5,3 +5,4 @@ __pycache__/
 # NEVER commit real Ministry data
 data/real/
 data/raw/
+data/synthetic/
