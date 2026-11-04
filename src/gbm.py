@@ -10,7 +10,7 @@ import pandas as pd
 from sklearn.ensemble import HistGradientBoostingRegressor
 
 from evaluate import FIRST_ORIGIN, HORIZON, STEP, fill_gaps, rolling_origin
-from features import MIN_HISTORY, build_row
+from features import FEATURE_NAMES, MIN_HISTORY, build_row
 
 
 def prepare(df):
@@ -51,7 +51,13 @@ def training_set(series, filled, origin, horizon):
     return np.array(X), np.array(y)
 
 
-def gbm_rolling_origin(df, first_origin=FIRST_ORIGIN, horizon=HORIZON, step=STEP):
+TESTING_FEATURES = ("tests_last", "tests_mean3", "tests_trend", "positivity_3m")
+
+
+def gbm_rolling_origin(df, first_origin=FIRST_ORIGIN, horizon=HORIZON, step=STEP,
+                       exclude=(), name="gbm"):
+    """`exclude` lists feature names to hide from the model (used for the ablation test)."""
+    keep = [i for i, f in enumerate(FEATURE_NAMES) if f not in exclude]
     series = prepare(df)
     n = len(next(iter(series.values()))["y_raw"])
     rows = []
@@ -59,7 +65,7 @@ def gbm_rolling_origin(df, first_origin=FIRST_ORIGIN, horizon=HORIZON, step=STEP
         filled = {d: (fill_gaps(s["y_raw"][:origin]), fill_gaps(s["tests_raw"][:origin]))
                   for d, s in series.items()}
         X, y = training_set(series, filled, origin, horizon)
-        model = make_model().fit(X, y)
+        model = make_model().fit(X[:, keep], y)
         for d, s in series.items():
             yf, tf = filled[d]
             scale = np.mean(np.abs(np.diff(yf)))
@@ -68,9 +74,9 @@ def gbm_rolling_origin(df, first_origin=FIRST_ORIGIN, horizon=HORIZON, step=STEP
                 if np.isnan(actual):
                     continue
                 row, lvl = build_row(yf, tf, origin, k, s["moy"], s["rel"], s["urban"])
-                pred = max(float(model.predict([row])[0]), 0.0) * lvl
+                pred = max(float(model.predict([[row[i] for i in keep]])[0]), 0.0) * lvl
                 rows.append(dict(
-                    district=d, model="gbm", origin=origin, horizon=k + 1,
+                    district=d, model=name, origin=origin, horizon=k + 1,
                     abs_error=abs(actual - pred), scale=scale, campaign=int(s["camp"][origin + k]),
                     urban_rural=s["ur"], size_class=s["sc"],
                 ))
@@ -81,7 +87,11 @@ def gbm_rolling_origin(df, first_origin=FIRST_ORIGIN, horizon=HORIZON, step=STEP
 
 def main():
     df = pd.read_csv("data/synthetic/district_months.csv")
-    res = pd.concat([rolling_origin(df), gbm_rolling_origin(df)], ignore_index=True)
+    res = pd.concat([
+        rolling_origin(df),
+        gbm_rolling_origin(df),
+        gbm_rolling_origin(df, exclude=TESTING_FEATURES, name="gbm_no_testing"),
+    ], ignore_index=True)
     show = lambda col: res.pivot_table(index="model", columns=col, values="scaled_error").round(2).to_string()
     print("Overall MASE (lower is better):")
     print(res.groupby("model")["scaled_error"].mean().round(3).to_string(), "\n")
