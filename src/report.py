@@ -12,6 +12,7 @@ import pandas as pd
 
 from evaluate import FIRST_ORIGIN, HORIZON, STEP, rolling_origin
 from gbm import TESTING_FEATURES, gbm_rolling_origin
+from conformal import conformal_rolling_origin, summarise
 from intervals import interval_rolling_origin
 
 
@@ -21,8 +22,11 @@ def md_table(df, index_name="", digits=2):
     head = "| " + " | ".join([index_name] + [str(c) for c in cols]) + " |"
     rule = "|" + "---|" * (len(cols) + 1)
     rows = []
-    for idx, row in df.iterrows():
-        cells = [f"{v:.{digits}f}" if isinstance(v, float) else str(v) for v in row]
+    is_int = [c == "n" or pd.api.types.is_integer_dtype(df[c]) for c in cols]
+    for i, idx in enumerate(df.index):
+        cells = [str(int(df.iloc[i][c])) if is_int[j] else
+                 (f"{df.iloc[i][c]:.{digits}f}" if isinstance(df.iloc[i][c], (float, int)) else str(df.iloc[i][c]))
+                 for j, c in enumerate(cols)]
         rows.append("| " + " | ".join([str(idx)] + cells) + " |")
     return "\n".join([head, rule] + rows)
 
@@ -41,11 +45,17 @@ def main():
     ], ignore_index=True)
     print("Running intervals ...")
     iv = interval_rolling_origin(df)
+    print("Running conformal calibration ...")
+    cq = conformal_rolling_origin(df)
+    cq_parts = ["**Overall**\n\n" + md_table(summarise(cq), "", 3)]
+    for col in ["campaign", "urban_rural", "size_class"]:
+        cq_parts.append(f"**By {col}**\n\n" + md_table(summarise(cq, col), col, 3))
 
     overall = acc.groupby("model")["scaled_error"].mean().round(3).to_frame("MASE")
     best_base = overall.loc[["naive", "seasonal_naive", "exp_smoothing"], "MASE"].min()
     gain = (1 - overall.loc["gbm", "MASE"] / best_base) * 100
 
+    cov = iv.groupby("urban_rural").agg(coverage_80=("in80", "mean"), coverage_95=("in95", "mean"), WIS=("wis_scaled", "mean"), n=("in80", "size"))
     parts = []
     for col in ["horizon", "urban_rural", "size_class", "campaign"]:
         t = iv.groupby(col).agg(coverage_80=("in80", "mean"), coverage_95=("in95", "mean"),
@@ -104,6 +114,14 @@ real outcomes inside the interval (targets: 0.80 and 0.95). WIS is the scaled we
 Overall: coverage 80% = {iv.in80.mean():.3f}, coverage 95% = {iv.in95.mean():.3f}, WIS = {iv.wis_scaled.mean():.3f}
 
 """ + "\n\n".join(parts) + f"""
+
+## 3b. Calibrated intervals (conformalized quantile regression)
+The intervals above are mildly too narrow. Conformal calibration widens them by an amount learned
+from the model's own recent errors (the latest 12 forecast origins are held out for this).
+raw = before calibration, cqr = after. Targets: 0.80 and 0.95. It fixes the average, but cannot
+foresee campaigns, so campaign months stay under-covered.
+
+""" + "\n\n".join(cq_parts) + f"""
 
 ## 4. Equity summary (gradient boosting)
 

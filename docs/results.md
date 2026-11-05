@@ -76,34 +76,68 @@ Overall: coverage 80% = 0.747, coverage 95% = 0.915, WIS = 0.331
 
 | horizon | coverage_80 | coverage_95 | WIS | n |
 |---|---|---|---|---|
-| 1 | 0.755 | 0.926 | 0.316 | 298.000 |
-| 2 | 0.746 | 0.883 | 0.363 | 291.000 |
-| 3 | 0.746 | 0.907 | 0.330 | 291.000 |
-| 4 | 0.728 | 0.930 | 0.310 | 298.000 |
-| 5 | 0.779 | 0.907 | 0.340 | 289.000 |
-| 6 | 0.727 | 0.935 | 0.331 | 293.000 |
+| 1 | 0.755 | 0.926 | 0.316 | 298 |
+| 2 | 0.746 | 0.883 | 0.363 | 291 |
+| 3 | 0.746 | 0.907 | 0.330 | 291 |
+| 4 | 0.728 | 0.930 | 0.310 | 298 |
+| 5 | 0.779 | 0.907 | 0.340 | 289 |
+| 6 | 0.727 | 0.935 | 0.331 | 293 |
 
 **By urban_rural**
 
 | urban_rural | coverage_80 | coverage_95 | WIS | n |
 |---|---|---|---|---|
-| rural | 0.750 | 0.917 | 0.336 | 1562.000 |
-| urban | 0.717 | 0.899 | 0.300 | 198.000 |
+| rural | 0.750 | 0.917 | 0.336 | 1562 |
+| urban | 0.717 | 0.899 | 0.300 | 198 |
 
 **By size_class**
 
 | size_class | coverage_80 | coverage_95 | WIS | n |
 |---|---|---|---|---|
-| large | 0.715 | 0.927 | 0.300 | 386.000 |
-| medium | 0.768 | 0.929 | 0.324 | 813.000 |
-| small | 0.738 | 0.886 | 0.364 | 561.000 |
+| large | 0.715 | 0.927 | 0.300 | 386 |
+| medium | 0.768 | 0.929 | 0.324 | 813 |
+| small | 0.738 | 0.886 | 0.364 | 561 |
 
 **By campaign**
 
 | campaign | coverage_80 | coverage_95 | WIS | n |
 |---|---|---|---|---|
-| 0 | 0.761 | 0.922 | 0.312 | 1662.000 |
-| 1 | 0.500 | 0.786 | 0.668 | 98.000 |
+| 0 | 0.761 | 0.922 | 0.312 | 1662 |
+| 1 | 0.500 | 0.786 | 0.668 | 98 |
+
+## 3b. Calibrated intervals (conformalized quantile regression)
+The intervals above are mildly too narrow. Conformal calibration widens them by an amount learned
+from the model's own recent errors (the latest 12 forecast origins are held out for this).
+raw = before calibration, cqr = after. Targets: 0.80 and 0.95. It fixes the average, but cannot
+foresee campaigns, so campaign months stay under-covered.
+
+**Overall**
+
+|  | raw_cov80 | cqr_cov80 | raw_cov95 | cqr_cov95 | raw_wis | cqr_wis | n |
+|---|---|---|---|---|---|---|---|
+| all | 0.747 | 0.799 | 0.922 | 0.943 | 0.331 | 0.330 | 1760 |
+
+**By campaign**
+
+| campaign | raw_cov80 | cqr_cov80 | raw_cov95 | cqr_cov95 | raw_wis | cqr_wis | n |
+|---|---|---|---|---|---|---|---|
+| 0 | 0.761 | 0.813 | 0.928 | 0.950 | 0.312 | 0.311 | 1662 |
+| 1 | 0.510 | 0.561 | 0.816 | 0.816 | 0.656 | 0.642 | 98 |
+
+**By urban_rural**
+
+| urban_rural | raw_cov80 | cqr_cov80 | raw_cov95 | cqr_cov95 | raw_wis | cqr_wis | n |
+|---|---|---|---|---|---|---|---|
+| rural | 0.745 | 0.800 | 0.920 | 0.939 | 0.334 | 0.333 | 1562 |
+| urban | 0.763 | 0.798 | 0.934 | 0.975 | 0.302 | 0.306 | 198 |
+
+**By size_class**
+
+| size_class | raw_cov80 | cqr_cov80 | raw_cov95 | cqr_cov95 | raw_wis | cqr_wis | n |
+|---|---|---|---|---|---|---|---|
+| large | 0.749 | 0.798 | 0.951 | 0.972 | 0.303 | 0.307 | 386 |
+| medium | 0.774 | 0.822 | 0.937 | 0.952 | 0.321 | 0.322 | 813 |
+| small | 0.708 | 0.768 | 0.879 | 0.909 | 0.364 | 0.357 | 561 |
 
 ## 4. Equity summary (gradient boosting)
 
