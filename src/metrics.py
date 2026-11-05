@@ -19,3 +19,20 @@ def mase(y_true, y_pred, y_train, m=1):
     if not np.isfinite(scale) or scale == 0:
         return np.nan
     return mae(y_true, y_pred) / scale
+
+
+def interval_score(y, lower, upper, alpha):
+    """Score for ONE central (1-alpha) interval. Lower is better.
+    = width of the interval  +  a penalty if the outcome falls outside it.
+    A wide interval is penalised as vague; a miss is penalised as overconfident."""
+    y, lower, upper = (np.asarray(v, float) for v in (y, lower, upper))
+    return (upper - lower) + (2 / alpha) * (lower - y) * (y < lower) + (2 / alpha) * (y - upper) * (y > upper)
+
+
+def wis(y, median, lowers, uppers, alphas):
+    """Weighted interval score (Bracher et al. 2021): the median's error plus the interval
+    scores of several nested intervals, each weighted by alpha/2."""
+    total = 0.5 * np.abs(np.asarray(y, float) - np.asarray(median, float))
+    for lo, hi, a in zip(lowers, uppers, alphas):
+        total = total + (a / 2) * interval_score(y, lo, hi, a)
+    return total / (len(alphas) + 0.5)
