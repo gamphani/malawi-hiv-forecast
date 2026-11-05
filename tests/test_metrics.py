@@ -30,3 +30,16 @@ def test_seasonal_naive_repeats_last_year():
 def test_fill_gaps_uses_only_the_past():
     filled = fill_gaps(np.array([1.0, np.nan, 3.0, np.nan]))
     assert list(filled) == [1.0, 2.0, 3.0, 3.0]      # trailing gap carried forward
+
+
+def test_interval_score_hand_calculation():
+    from metrics import interval_score
+    assert interval_score(50, 40, 70, 0.2) == 30                 # inside: just the width
+    assert interval_score(80, 40, 70, 0.2) == 30 + 10 * 10       # 10 above: width + (2/0.2)*10
+    assert interval_score(30, 40, 70, 0.2) == 30 + 10 * 10       # 10 below
+
+
+def test_wis_hand_calculation():
+    from metrics import wis
+    # median error 5 -> 0.5*5 = 2.5 ; interval score 30 weighted by 0.2/2 = 3 ; (2.5+3)/(1+0.5)
+    assert abs(wis(50, 55, [40], [70], [0.2]) - 5.5 / 1.5) < 1e-9
